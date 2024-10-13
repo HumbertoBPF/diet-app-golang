@@ -18,8 +18,8 @@ type Config struct {
 
 var AppConfig Config
 
-func init() {
-	viper.AddConfigPath(".")
+func LoadEnv(configPath string) {
+	viper.AddConfigPath(configPath)
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
 

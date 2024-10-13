@@ -1,28 +1,35 @@
 package routes
 
 import (
-	"diet-app-backend/api/handlers"
+	fooditemservice "diet-app-backend/api/services/food_item_service"
+	foodservice "diet-app-backend/api/services/food_service"
+	userservice "diet-app-backend/api/services/user_service"
 	"diet-app-backend/util/authentication"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Route() {
+func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
-	router.POST("/login", handlers.Login)
-	router.POST("/signup", handlers.Signup)
+	router.POST("/login", userservice.Login)
+	router.POST("/signup", userservice.Signup)
+	router.GET("/user", authentication.Authenticate(userservice.GetUser))
 
-	router.GET("/user", authentication.Authenticate(handlers.GetUser))
+	router.GET("/food", foodservice.GetFoods)
+	router.GET("/food/:id", foodservice.GetFood)
 
-	router.GET("/food", handlers.GetFoods)
-	router.GET("/food/:id", handlers.GetFood)
+	router.GET("/user/food", authentication.Authenticate(fooditemservice.GetUserFoods))
+	router.GET("/user/food/:id", authentication.Authenticate(fooditemservice.GetUserFood))
+	router.POST("/user/food", authentication.Authenticate(fooditemservice.PostUserFood))
+	router.PUT("/user/food/:id", authentication.Authenticate(fooditemservice.PutUserFood))
+	router.DELETE("/user/food/:id", authentication.Authenticate(fooditemservice.DeleteUserFood))
 
-	router.GET("/user/food", authentication.Authenticate(handlers.GetUserFoods))
-	router.GET("/user/food/:id", authentication.Authenticate(handlers.GetUserFood))
-	router.POST("/user/food", authentication.Authenticate(handlers.PostUserFood))
-	router.PUT("/user/food/:id", authentication.Authenticate(handlers.PutUserFood))
-	router.DELETE("/user/food/:id", authentication.Authenticate(handlers.DeleteUserFood))
+	return router
+}
+
+func Route() {
+	router := SetupRouter()
 
 	router.Run("localhost:8080")
 }
