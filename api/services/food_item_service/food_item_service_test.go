@@ -80,13 +80,17 @@ func (suite *TestSuite) TestGetUserFoodsSuccessful() {
 				AddRow(1, email, firstName, lastName, hashedPassword),
 		)
 
-	suite.mock.ExpectQuery("^SELECT \\* FROM `food_items` WHERE user_id = \\? AND timestamp BETWEEN \\? AND \\?").
+	suite.mock.ExpectQuery(
+		"^SELECT food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp"+
+			" FROM `food_items` "+
+			"JOIN foods ON food_items.food_id = foods.id WHERE user_id = \\? AND timestamp BETWEEN \\? AND \\?",
+	).
 		WithArgs(float64(1), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "user_id", "food_id", "quantity", "timestamp"}).
-				AddRow(1, 1, 1, 100, time.Now()).
-				AddRow(1, 1, 2, 150, time.Now()).
-				AddRow(1, 1, 3, 50, time.Now()),
+			sqlmock.NewRows([]string{"id", "user_id", "food_id", "name", "calories", "portion", "quantity", "timestamp"}).
+				AddRow(1, 1, 1, "Pasta", 193, 80, 100, time.Now()).
+				AddRow(1, 1, 2, "Grated Cheese", 492, 100, 150, time.Now()).
+				AddRow(1, 1, 3, "Tomato Sauce", 34, 100, 50, time.Now()),
 		)
 
 	router := routes.SetupRouter()
@@ -99,7 +103,7 @@ func (suite *TestSuite) TestGetUserFoodsSuccessful() {
 
 	router.ServeHTTP(w, req)
 
-	var responseBody []models.FoodItem
+	var responseBody []schemas.JoinedFoodItem
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 
 	assert.Equal(suite.T(), 200, w.Code)
@@ -109,16 +113,25 @@ func (suite *TestSuite) TestGetUserFoodsSuccessful() {
 	assert.Equal(suite.T(), uint(1), responseBody[0].ID)
 	assert.Equal(suite.T(), uint(1), responseBody[0].UserID)
 	assert.Equal(suite.T(), uint(1), responseBody[0].FoodID)
+	assert.Equal(suite.T(), "Pasta", responseBody[0].Name)
+	assert.Equal(suite.T(), 193, responseBody[0].Calories)
+	assert.Equal(suite.T(), 80, responseBody[0].Portion)
 	assert.Equal(suite.T(), uint(100), responseBody[0].Quantity)
 
 	assert.Equal(suite.T(), uint(1), responseBody[1].ID)
 	assert.Equal(suite.T(), uint(1), responseBody[1].UserID)
 	assert.Equal(suite.T(), uint(2), responseBody[1].FoodID)
+	assert.Equal(suite.T(), "Grated Cheese", responseBody[1].Name)
+	assert.Equal(suite.T(), 492, responseBody[1].Calories)
+	assert.Equal(suite.T(), 100, responseBody[1].Portion)
 	assert.Equal(suite.T(), uint(150), responseBody[1].Quantity)
 
 	assert.Equal(suite.T(), uint(1), responseBody[2].ID)
 	assert.Equal(suite.T(), uint(1), responseBody[2].UserID)
 	assert.Equal(suite.T(), uint(3), responseBody[2].FoodID)
+	assert.Equal(suite.T(), "Tomato Sauce", responseBody[2].Name)
+	assert.Equal(suite.T(), 34, responseBody[2].Calories)
+	assert.Equal(suite.T(), 100, responseBody[2].Portion)
 	assert.Equal(suite.T(), uint(50), responseBody[2].Quantity)
 }
 
@@ -154,11 +167,15 @@ func (suite *TestSuite) TestGetUserFoodsWithTimestampFilter() {
 				AddRow(1, email, firstName, lastName, hashedPassword),
 		)
 
-	suite.mock.ExpectQuery("^SELECT \\* FROM `food_items` WHERE user_id = \\? AND timestamp BETWEEN \\? AND \\?").
+	suite.mock.ExpectQuery(
+		"^SELECT food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp"+
+			" FROM `food_items` "+
+			"JOIN foods ON food_items.food_id = foods.id WHERE user_id = \\? AND timestamp BETWEEN \\? AND \\?",
+	).
 		WithArgs(float64(1), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "user_id", "food_id", "quantity", "timestamp"}).
-				AddRow(1, 1, 1, 100, time.Now()),
+			sqlmock.NewRows([]string{"id", "user_id", "food_id", "name", "calories", "portion", "quantity", "timestamp"}).
+				AddRow(1, 1, 1, "Pasta", 193, 80, 100, time.Now()),
 		)
 
 	router := routes.SetupRouter()
@@ -171,7 +188,7 @@ func (suite *TestSuite) TestGetUserFoodsWithTimestampFilter() {
 
 	router.ServeHTTP(w, req)
 
-	var responseBody []models.FoodItem
+	var responseBody []schemas.JoinedFoodItem
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 
 	assert.Equal(suite.T(), 200, w.Code)
@@ -181,6 +198,9 @@ func (suite *TestSuite) TestGetUserFoodsWithTimestampFilter() {
 	assert.Equal(suite.T(), uint(1), responseBody[0].ID)
 	assert.Equal(suite.T(), uint(1), responseBody[0].UserID)
 	assert.Equal(suite.T(), uint(1), responseBody[0].FoodID)
+	assert.Equal(suite.T(), "Pasta", responseBody[0].Name)
+	assert.Equal(suite.T(), 193, responseBody[0].Calories)
+	assert.Equal(suite.T(), 80, responseBody[0].Portion)
 	assert.Equal(suite.T(), uint(100), responseBody[0].Quantity)
 }
 
@@ -199,11 +219,15 @@ func (suite *TestSuite) TestGetUserFoodSuccessful() {
 				AddRow(1, email, firstName, lastName, hashedPassword),
 		)
 
-	suite.mock.ExpectQuery("^SELECT \\* FROM `food_items` WHERE id = \\? AND user_id = \\? ORDER BY `food_items`.`id` LIMIT \\?").
+	suite.mock.ExpectQuery(
+		"^SELECT food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp"+
+			" FROM `food_items` "+
+			"JOIN foods ON food_items.food_id = foods.id WHERE food_items.id = \\? AND food_items.user_id = \\? ORDER BY `food_items`.`id` LIMIT \\?",
+	).
 		WithArgs("1", float64(1), 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "user_id", "food_id", "quantity", "timestamp"}).
-				AddRow(1, 1, 1, 100, time.Now()),
+			sqlmock.NewRows([]string{"id", "user_id", "food_id", "name", "calories", "portion", "quantity", "timestamp"}).
+				AddRow(1, 1, 1, "Pasta", 193, 80, 100, time.Now()),
 		)
 
 	router := routes.SetupRouter()
@@ -216,7 +240,7 @@ func (suite *TestSuite) TestGetUserFoodSuccessful() {
 
 	router.ServeHTTP(w, req)
 
-	var responseBody models.FoodItem
+	var responseBody schemas.JoinedFoodItem
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 
 	assert.Equal(suite.T(), 200, w.Code)
@@ -224,6 +248,9 @@ func (suite *TestSuite) TestGetUserFoodSuccessful() {
 	assert.Equal(suite.T(), uint(1), responseBody.ID)
 	assert.Equal(suite.T(), uint(1), responseBody.UserID)
 	assert.Equal(suite.T(), uint(1), responseBody.FoodID)
+	assert.Equal(suite.T(), "Pasta", responseBody.Name)
+	assert.Equal(suite.T(), 193, responseBody.Calories)
+	assert.Equal(suite.T(), 80, responseBody.Portion)
 	assert.Equal(suite.T(), uint(100), responseBody.Quantity)
 }
 
@@ -257,10 +284,14 @@ func (suite *TestSuite) TestGetUserFoodNotFound() {
 				AddRow(1, email, firstName, lastName, hashedPassword),
 		)
 
-	suite.mock.ExpectQuery("^SELECT \\* FROM `food_items` WHERE id = \\? AND user_id = \\? ORDER BY `food_items`.`id` LIMIT \\?").
+	suite.mock.ExpectQuery(
+		"^SELECT food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp"+
+			" FROM `food_items` "+
+			"JOIN foods ON food_items.food_id = foods.id WHERE food_items.id = \\? AND food_items.user_id = \\? ORDER BY `food_items`.`id` LIMIT \\?",
+	).
 		WithArgs("1", float64(1), 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "user_id", "food_id", "quantity", "timestamp"}),
+			sqlmock.NewRows([]string{"id", "user_id", "food_id", "name", "calories", "portion", "quantity", "timestamp"}),
 		)
 
 	router := routes.SetupRouter()
@@ -301,6 +332,17 @@ func (suite *TestSuite) TestPostUserFoodSuccessful() {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	suite.mock.ExpectCommit()
 
+	suite.mock.ExpectQuery(
+		"^SELECT food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp"+
+			" FROM `food_items` "+
+			"JOIN foods ON food_items.food_id = foods.id WHERE food_items.id = \\? AND food_items.user_id = \\? ORDER BY `food_items`.`id` LIMIT \\?",
+	).
+		WithArgs(1, float64(1), 1).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "user_id", "food_id", "name", "calories", "portion", "quantity", "timestamp"}).
+				AddRow(1, 1, 1, "Pasta", 193, 80, 100, time.Now()),
+		)
+
 	router := routes.SetupRouter()
 	w := httptest.NewRecorder()
 
@@ -318,7 +360,7 @@ func (suite *TestSuite) TestPostUserFoodSuccessful() {
 
 	router.ServeHTTP(w, req)
 
-	var responseBody models.FoodItem
+	var responseBody schemas.JoinedFoodItem
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 
 	assert.Equal(suite.T(), 201, w.Code)
@@ -326,6 +368,9 @@ func (suite *TestSuite) TestPostUserFoodSuccessful() {
 	assert.Equal(suite.T(), uint(1), responseBody.ID)
 	assert.Equal(suite.T(), uint(1), responseBody.UserID)
 	assert.Equal(suite.T(), uint(1), responseBody.FoodID)
+	assert.Equal(suite.T(), "Pasta", responseBody.Name)
+	assert.Equal(suite.T(), 193, responseBody.Calories)
+	assert.Equal(suite.T(), 80, responseBody.Portion)
 	assert.Equal(suite.T(), uint(100), responseBody.Quantity)
 }
 
@@ -479,6 +524,17 @@ func (suite *TestSuite) TestPutUserFoodSuccessful() {
 	suite.mock.ExpectExec("UPDATE `food_items`").WillReturnResult(sqlmock.NewResult(1, 1))
 	suite.mock.ExpectCommit()
 
+	suite.mock.ExpectQuery(
+		"^SELECT food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp"+
+			" FROM `food_items` "+
+			"JOIN foods ON food_items.food_id = foods.id WHERE food_items.id = \\? AND food_items.user_id = \\? ORDER BY `food_items`.`id` LIMIT \\?",
+	).
+		WithArgs("1", float64(1), 1).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "user_id", "food_id", "name", "calories", "portion", "quantity", "timestamp"}).
+				AddRow(1, 1, 1, "Pasta", 193, 80, 120, time.Now()),
+		)
+
 	token := tests.GetToken(email, password)
 
 	router := routes.SetupRouter()
@@ -495,7 +551,7 @@ func (suite *TestSuite) TestPutUserFoodSuccessful() {
 
 	router.ServeHTTP(w, req)
 
-	var responseBody models.FoodItem
+	var responseBody schemas.JoinedFoodItem
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 
 	assert.Equal(suite.T(), 200, w.Code)
@@ -503,6 +559,9 @@ func (suite *TestSuite) TestPutUserFoodSuccessful() {
 	assert.Equal(suite.T(), uint(1), responseBody.ID)
 	assert.Equal(suite.T(), uint(1), responseBody.UserID)
 	assert.Equal(suite.T(), uint(1), responseBody.FoodID)
+	assert.Equal(suite.T(), "Pasta", responseBody.Name)
+	assert.Equal(suite.T(), 193, responseBody.Calories)
+	assert.Equal(suite.T(), 80, responseBody.Portion)
 	assert.Equal(suite.T(), uint(120), responseBody.Quantity)
 }
 

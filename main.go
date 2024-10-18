@@ -10,6 +10,8 @@ import (
 )
 
 func main() {
+	config.LoadEnv(".")
+
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		config.AppConfig.DbUsername,
@@ -19,8 +21,6 @@ func main() {
 		config.AppConfig.DbDatabase,
 	)
 	dialector := mysql.Open(dsn)
-
-	config.LoadEnv(".")
 
 	connection.Connect(dialector)
 	routes.Route()

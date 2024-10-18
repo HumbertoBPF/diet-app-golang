@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/spf13/viper"
 )
 
@@ -14,6 +12,7 @@ type Config struct {
 	DbHost        string `mapstructure:"DB_HOST"`
 	DbPort        string `mapstructure:"DB_PORT"`
 	DbDatabase    string `mapstructure:"DB_DATABASE"`
+	FrontEndUrl   string `mapstructure:"FRONT_END_URL"`
 }
 
 var AppConfig Config
@@ -26,12 +25,10 @@ func LoadEnv(configPath string) {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
 	if err := viper.Unmarshal(&AppConfig); err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 }

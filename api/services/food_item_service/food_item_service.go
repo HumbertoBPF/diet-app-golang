@@ -18,9 +18,8 @@ func GetUserFoods(c *gin.Context) {
 	now := time.Now()
 	defaultDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
-	timestamp := c.DefaultQuery("timestamp", defaultDate.Format(time.RFC3339))
-
-	timestampDayAfter, err := time.Parse(time.RFC3339, timestamp)
+	timestampStr := c.DefaultQuery("timestamp", defaultDate.Format(time.RFC3339))
+	timestamp, err := time.Parse(time.RFC3339, timestampStr)
 
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{
@@ -29,12 +28,16 @@ func GetUserFoods(c *gin.Context) {
 		return
 	}
 
-	timestampDayAfter = timestampDayAfter.AddDate(0, 0, 1)
+	timestampDayAfter := timestamp.AddDate(0, 0, 1)
 
 	userId := claims["id"]
 
-	var foodItems []models.FoodItem
-	connection.Db.Where("user_id = ? AND timestamp BETWEEN ? AND ?", userId, timestamp, timestampDayAfter).Find(&foodItems)
+	var foodItems []schemas.JoinedFoodItem
+	connection.Db.Model(&models.FoodItem{}).
+		Select("food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp").
+		Joins("JOIN foods ON food_items.food_id = foods.id").
+		Where("user_id = ? AND timestamp BETWEEN ? AND ?", userId, timestamp, timestampDayAfter).
+		Find(&foodItems)
 
 	c.IndentedJSON(http.StatusOK, foodItems)
 }
@@ -45,8 +48,12 @@ func GetUserFood(c *gin.Context) {
 	id := c.Param("id")
 	userId := claims["id"]
 
-	var foodItem models.FoodItem
-	result := connection.Db.Where("id = ? AND user_id = ?", id, userId).First(&foodItem)
+	var foodItem schemas.JoinedFoodItem
+	result := connection.Db.Model(&models.FoodItem{}).
+		Select("food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp").
+		Joins("JOIN foods ON food_items.food_id = foods.id").
+		Where("food_items.id = ? AND food_items.user_id = ?", id, userId).
+		First(&foodItem)
 
 	if result.Error != nil {
 		c.IndentedJSON(http.StatusNotFound, gin.H{
@@ -61,7 +68,7 @@ func GetUserFood(c *gin.Context) {
 func PostUserFood(c *gin.Context) {
 	claims, _ := tokens.GetClaims(c)
 
-	id := claims["id"]
+	userId := claims["id"]
 
 	var foodItem models.FoodItem
 
@@ -69,7 +76,7 @@ func PostUserFood(c *gin.Context) {
 		return
 	}
 
-	foodItem.UserID = uint(id.(float64))
+	foodItem.UserID = uint(userId.(float64))
 
 	result := connection.Db.Create(&foodItem)
 
@@ -80,7 +87,15 @@ func PostUserFood(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusCreated, foodItem)
+	var joinedFoodItem schemas.JoinedFoodItem
+
+	connection.Db.Model(&models.FoodItem{}).
+		Select("food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp").
+		Joins("JOIN foods ON food_items.food_id = foods.id").
+		Where("food_items.id = ? AND food_items.user_id = ?", foodItem.ID, userId).
+		First(&joinedFoodItem)
+
+	c.IndentedJSON(http.StatusCreated, joinedFoodItem)
 }
 
 func PutUserFood(c *gin.Context) {
@@ -119,7 +134,15 @@ func PutUserFood(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, foodItem)
+	var joinedFoodItem schemas.JoinedFoodItem
+
+	connection.Db.Model(&models.FoodItem{}).
+		Select("food_items.id, food_items.user_id, foods.id as food_id, foods.name, foods.calories, foods.portion, food_items.quantity, food_items.timestamp").
+		Joins("JOIN foods ON food_items.food_id = foods.id").
+		Where("food_items.id = ? AND food_items.user_id = ?", id, userId).
+		First(&joinedFoodItem)
+
+	c.IndentedJSON(http.StatusOK, joinedFoodItem)
 }
 
 func DeleteUserFood(c *gin.Context) {
